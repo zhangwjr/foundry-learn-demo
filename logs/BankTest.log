@@ -1,0 +1,21 @@
+Compiling 2 files with Solc 0.8.33
+Solc 0.8.33 finished in 592.51ms
+Compiler run successful!
+
+Ran 13 tests for test/Bank.t.sol:BankTest
+[PASS] test_Deposit_AccumulatesBalanceOnMultipleDeposits() (gas: 90809)
+[PASS] test_Deposit_UpdatesBalance() (gas: 76056)
+[PASS] test_Receive_UpdatesBalance() (gas: 73828)
+[PASS] test_RevertWhen_DepositZeroAmount() (gas: 12380)
+[PASS] test_RevertWhen_NonAdminWithdraws() (gas: 79018)
+[PASS] test_RevertWhen_UserWithdraws() (gas: 77038)
+[PASS] test_Top3_SameUserMultipleDeposits_AccumulatesAndReranks() (gas: 157471)
+[PASS] test_Top3_SameUserMultipleDeposits_CanBecomeFirst() (gas: 157428)
+[PASS] test_Top3_WithFourUsers_KeepsHighestThree() (gas: 236749)
+[PASS] test_Top3_WithOneUser() (gas: 83110)
+[PASS] test_Top3_WithThreeUsers() (gas: 198634)
+[PASS] test_Top3_WithTwoUsers() (gas: 141859)
+[PASS] test_Withdraw_ByAdmin() (gas: 117665)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 13.37ms (11.79ms CPU time)
+
+Ran 1 test suite in 871.26ms (13.37ms CPU time): 13 tests passed, 0 failed, 0 skipped (13 total tests)
