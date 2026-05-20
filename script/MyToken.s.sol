@@ -6,10 +6,10 @@ import {MyToken} from "../src/MyToken.sol";
 
 contract MyTokenScript is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
+        // `vm.getWallets()` stays empty with `forge script --account`; use the public address instead.
+        address deployer = vm.envAddress("DEPLOYER_ADDRESS");
 
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast(deployer);
 
         new MyToken(deployer);
 

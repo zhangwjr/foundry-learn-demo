@@ -10,7 +10,9 @@ out/
 # Docs (keep project guides)
 docs/*
 !docs/deploy-mytoken-sepolia.md
+!docs/cast-wallet-keystore.md
 
 # Dotenv file
 .env
+keystores
 .DS_Store
