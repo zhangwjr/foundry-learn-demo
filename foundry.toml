@@ -4,6 +4,7 @@ out = "out"
 libs = ["lib"]
 
 [rpc_endpoints]
+mainnet = "https://ethereum-rpc.publicnode.com"
 sepolia = "${SEPOLIA_RPC_URL}"
 
 [etherscan]
