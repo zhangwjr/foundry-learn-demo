@@ -64,7 +64,7 @@ contract BaseERC721 {
     constructor(
         string memory name_,
         string memory symbol_,
-        string memory baseURI_——
+        string memory baseURI_
     ) {
         _name = name_;
         _symbol = symbol_;
