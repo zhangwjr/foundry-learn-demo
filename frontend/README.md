@@ -2,6 +2,10 @@
 
 Next.js + viem 前端，用于与 TokenBank 合约交互。
 
+## 页面预览
+
+![TokenBank 页面截图](./docs/tokenbank-screenshot.png)
+
 ## 环境变量
 
 复制 `.env.example` 为 `.env.local` 并填写部署后的合约地址：
