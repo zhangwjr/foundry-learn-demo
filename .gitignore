@@ -12,6 +12,7 @@ docs/*
 !docs/deploy-mytoken-sepolia.md
 !docs/cast-wallet-keystore.md
 !docs/mint-nft-flow.md
+!docs/deploy-martin-nft-optimism.md
 
 # Dotenv file
 .env
