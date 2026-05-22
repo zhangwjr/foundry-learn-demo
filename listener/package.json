@@ -1,0 +1,19 @@
+{
+  "name": "nft-market-listener",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "listen": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "viem": "^2.50.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.19.4",
+    "typescript": "^5"
+  }
+}

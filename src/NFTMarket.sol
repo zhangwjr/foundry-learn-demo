@@ -44,7 +44,8 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver {
     }
 
     function buyNFT(uint256 tokenId) external {
-        _purchase(tokenId, msg.sender, 0, false);
+        (address seller, uint256 price) = _purchase(tokenId, msg.sender, 0, false);
+        emit Sold(seller, msg.sender, tokenId, price);
     }
 
     function onTransferReceived(address, address from, uint256 value, bytes calldata data)
@@ -54,17 +55,21 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver {
         require(msg.sender == address(paymentToken), "Invalid caller");
 
         uint256 tokenId = abi.decode(data, (uint256));
-        _purchase(tokenId, from, value, true);
+        (address seller, uint256 price) = _purchase(tokenId, from, value, true);
+        emit Sold(seller, from, tokenId, price);
 
         return IERC1363Receiver.onTransferReceived.selector;
     }
 
-    function _purchase(uint256 tokenId, address buyer, uint256 paymentAmount, bool tokensAlreadyReceived) internal {
+    function _purchase(uint256 tokenId, address buyer, uint256 paymentAmount, bool tokensAlreadyReceived)
+        internal
+        returns (address seller, uint256 price)
+    {
         Listing memory listing = listings[tokenId];
         require(listing.active, "Not listed");
 
-        address seller = listing.seller;
-        uint256 price = listing.price;
+        seller = listing.seller;
+        price = listing.price;
 
         if (tokensAlreadyReceived) {
             require(paymentAmount == price, "Incorrect price");
@@ -79,8 +84,6 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver {
         }
 
         nft.safeTransferFrom(address(this), buyer, tokenId);
-
-        emit Sold(seller, buyer, tokenId, price);
     }
 
     function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
