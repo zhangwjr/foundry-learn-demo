@@ -4,6 +4,7 @@ out = "out"
 libs = ["lib"]
 
 [rpc_endpoints]
+local = "http://127.0.0.1:8545"
 mainnet = "https://ethereum-rpc.publicnode.com"
 sepolia = "${SEPOLIA_RPC_URL}"
 polygon = "${POLYGON_RPC_URL}"
