@@ -5,8 +5,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {IERC1363Receiver} from "@openzeppelin/contracts/interfaces/IERC1363Receiver.sol";
 
-contract NFTMarket is IERC721Receiver {
+contract NFTMarket is IERC721Receiver, IERC1363Receiver {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable paymentToken;
@@ -43,18 +44,43 @@ contract NFTMarket is IERC721Receiver {
     }
 
     function buyNFT(uint256 tokenId) external {
+        _purchase(tokenId, msg.sender, 0, false);
+    }
+
+    function onTransferReceived(address, address from, uint256 value, bytes calldata data)
+        external
+        returns (bytes4)
+    {
+        require(msg.sender == address(paymentToken), "Invalid caller");
+
+        uint256 tokenId = abi.decode(data, (uint256));
+        _purchase(tokenId, from, value, true);
+
+        return IERC1363Receiver.onTransferReceived.selector;
+    }
+
+    function _purchase(uint256 tokenId, address buyer, uint256 paymentAmount, bool tokensAlreadyReceived) internal {
         Listing memory listing = listings[tokenId];
         require(listing.active, "Not listed");
 
         address seller = listing.seller;
         uint256 price = listing.price;
 
+        if (tokensAlreadyReceived) {
+            require(paymentAmount == price, "Incorrect price");
+        }
+
         delete listings[tokenId];
 
-        paymentToken.safeTransferFrom(msg.sender, seller, price);
-        nft.safeTransferFrom(address(this), msg.sender, tokenId);
+        if (tokensAlreadyReceived) {
+            paymentToken.safeTransfer(seller, price);
+        } else {
+            paymentToken.safeTransferFrom(buyer, seller, price);
+        }
 
-        emit Sold(seller, msg.sender, tokenId, price);
+        nft.safeTransferFrom(address(this), buyer, tokenId);
+
+        emit Sold(seller, buyer, tokenId, price);
     }
 
     function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {

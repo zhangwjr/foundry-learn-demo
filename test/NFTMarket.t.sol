@@ -88,6 +88,38 @@ contract NFTMarketTest is Test {
         assertFalse(active);
     }
 
+    function test_BuyNFTViaTransferAndCall() public {
+        _listNft(seller, 0, LIST_PRICE);
+
+        uint256 sellerBalanceBefore = token.balanceOf(seller);
+        uint256 buyerBalanceBefore = token.balanceOf(buyer);
+
+        vm.expectEmit(true, true, true, true);
+        emit NFTMarket.Sold(seller, buyer, 0, LIST_PRICE);
+
+        vm.prank(buyer);
+        token.transferAndCall(address(market), LIST_PRICE, abi.encode(0));
+
+        assertEq(token.balanceOf(seller), sellerBalanceBefore + LIST_PRICE);
+        assertEq(token.balanceOf(buyer), buyerBalanceBefore - LIST_PRICE);
+        assertEq(nft.ownerOf(0), buyer);
+        assertEq(token.balanceOf(address(market)), 0);
+    }
+
+    function test_RevertWhen_TransferAndCallWithWrongPrice() public {
+        _listNft(seller, 0, LIST_PRICE);
+
+        vm.prank(buyer);
+        vm.expectRevert("Incorrect price");
+        token.transferAndCall(address(market), 50 ether, abi.encode(0));
+    }
+
+    function test_RevertWhen_TransferAndCallNotListed() public {
+        vm.prank(buyer);
+        vm.expectRevert("Not listed");
+        token.transferAndCall(address(market), LIST_PRICE, abi.encode(0));
+    }
+
     function test_BuyNFT_MultipleListings() public {
         vm.prank(owner);
         nft.mint(seller, TOKEN_URI);
