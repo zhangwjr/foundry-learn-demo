@@ -11,6 +11,7 @@ out/
 docs/*
 !docs/deploy-mytoken-sepolia.md
 !docs/cast-wallet-keystore.md
+!docs/mint-nft-flow.md
 
 # Dotenv file
 .env

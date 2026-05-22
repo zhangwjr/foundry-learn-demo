@@ -7,11 +7,13 @@ libs = ["lib"]
 mainnet = "https://ethereum-rpc.publicnode.com"
 sepolia = "${SEPOLIA_RPC_URL}"
 polygon = "${POLYGON_RPC_URL}"
+polygon_amoy = "https://rpc-amoy.polygon.technology"
 optimism = "${OPTIMISM_RPC_URL}"
 
 [etherscan]
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
 polygon = { key = "${ETHERSCAN_API_KEY}", url = "https://api.polygonscan.com/api" }
+polygon_amoy = { key = "${ETHERSCAN_API_KEY}", url = "https://api-amoy.polygonscan.com/api" }
 optimism = { key = "${ETHERSCAN_API_KEY}", url = "https://api-optimistic.etherscan.io/api" }
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
