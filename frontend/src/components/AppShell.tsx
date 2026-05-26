@@ -2,11 +2,11 @@
 
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { TokenBankApp } from "@/components/TokenBankApp";
-import { WalletProvider } from "@/lib/wallet";
+import { Providers } from "@/lib/providers";
 
 export function AppShell() {
   return (
-    <WalletProvider>
+    <Providers>
       <div className="min-h-screen bg-zinc-100">
         <header className="border-b border-zinc-200 bg-white">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
@@ -22,6 +22,6 @@ export function AppShell() {
           <TokenBankApp />
         </main>
       </div>
-    </WalletProvider>
+    </Providers>
   );
 }

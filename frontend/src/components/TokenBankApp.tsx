@@ -4,7 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { formatUnits, parseUnits } from "viem";
 import { erc20Abi, tokenBankAbi } from "@/lib/abi";
 import { isConfigured, tokenAddress, tokenBankAddress, chain } from "@/lib/config";
-import { useWallet } from "@/lib/wallet";
+import {
+  useConnection,
+  usePublicClient,
+  useWalletClient,
+} from "wagmi";
 
 type TokenInfo = {
   symbol: string;
@@ -16,8 +20,9 @@ function formatTokenAmount(value: bigint, decimals: number) {
 }
 
 export function TokenBankApp() {
-  const { address, isConnected, publicClient, walletClient, refreshClients } =
-    useWallet();
+  const { address, isConnected } = useConnection();
+  const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
 
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
   const [tokenBalance, setTokenBalance] = useState<bigint>(0n);
@@ -30,7 +35,7 @@ export function TokenBankApp() {
   const configured = isConfigured();
 
   const refreshBalances = useCallback(async () => {
-    if (!configured || !address || !tokenAddress || !tokenBankAddress) {
+    if (!configured || !address || !tokenAddress || !tokenBankAddress || !publicClient) {
       return;
     }
 
@@ -101,7 +106,13 @@ export function TokenBankApp() {
   }, [refreshBalances]);
 
   const handleDeposit = async () => {
-    if (!walletClient || !address || !tokenAddress || !tokenBankAddress) {
+    if (
+      !walletClient ||
+      !address ||
+      !tokenAddress ||
+      !tokenBankAddress ||
+      !publicClient
+    ) {
       setStatusMessage("钱包或合约尚未就绪，请稍后重试");
       return;
     }
@@ -154,7 +165,6 @@ export function TokenBankApp() {
       setDepositAmount("");
       setStatusMessage(`存款成功：${amount} ${tokenInfo.symbol}`);
       await refreshBalances();
-      await refreshClients();
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "存款失败，请重试",
@@ -165,7 +175,13 @@ export function TokenBankApp() {
   };
 
   const handleWithdraw = async () => {
-    if (!walletClient || !address || !tokenBankAddress || !tokenInfo) {
+    if (
+      !walletClient ||
+      !address ||
+      !tokenBankAddress ||
+      !tokenInfo ||
+      !publicClient
+    ) {
       return;
     }
 
@@ -192,7 +208,6 @@ export function TokenBankApp() {
       setWithdrawAmount("");
       setStatusMessage(`取款成功：${withdrawn} ${tokenInfo.symbol}`);
       await refreshBalances();
-      await refreshClients();
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "取款失败，请重试",
