@@ -10,8 +10,8 @@ import {IERC1363Receiver} from "@openzeppelin/contracts/interfaces/IERC1363Recei
 contract NFTMarket is IERC721Receiver, IERC1363Receiver {
     using SafeERC20 for IERC20;
 
-    IERC20 public immutable paymentToken;
-    IERC721 public immutable nft;
+    IERC20 public immutable PAYMENT_TOKEN;
+    IERC721 public immutable NFT;
 
     struct Listing {
         address seller;
@@ -27,23 +27,23 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver {
     constructor(address paymentTokenAddress, address nftAddress) {
         require(paymentTokenAddress != address(0), "Invalid token address");
         require(nftAddress != address(0), "Invalid NFT address");
-        paymentToken = IERC20(paymentTokenAddress);
-        nft = IERC721(nftAddress);
+        PAYMENT_TOKEN = IERC20(paymentTokenAddress);
+        NFT = IERC721(nftAddress);
     }
 
     function list(uint256 tokenId, uint256 price) external {
         require(price > 0, "Price must be greater than 0");
-        require(nft.ownerOf(tokenId) == msg.sender, "Not the owner");
+        require(NFT.ownerOf(tokenId) == msg.sender, "Not the owner");
         require(!listings[tokenId].active, "Already listed");
 
-        nft.safeTransferFrom(msg.sender, address(this), tokenId);
+        NFT.safeTransferFrom(msg.sender, address(this), tokenId);
 
         listings[tokenId] = Listing({seller: msg.sender, price: price, active: true});
 
         emit Listed(msg.sender, tokenId, price);
     }
 
-    function buyNFT(uint256 tokenId) external {
+    function buyNft(uint256 tokenId) external {
         (address seller, uint256 price) = _purchase(tokenId, msg.sender, 0, false);
         emit Sold(seller, msg.sender, tokenId, price);
     }
@@ -52,7 +52,7 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver {
         external
         returns (bytes4)
     {
-        require(msg.sender == address(paymentToken), "Invalid caller");
+        require(msg.sender == address(PAYMENT_TOKEN), "Invalid caller");
 
         uint256 tokenId = abi.decode(data, (uint256));
         (address seller, uint256 price) = _purchase(tokenId, from, value, true);
@@ -78,12 +78,12 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver {
         delete listings[tokenId];
 
         if (tokensAlreadyReceived) {
-            paymentToken.safeTransfer(seller, price);
+            PAYMENT_TOKEN.safeTransfer(seller, price);
         } else {
-            paymentToken.safeTransferFrom(buyer, seller, price);
+            PAYMENT_TOKEN.safeTransferFrom(buyer, seller, price);
         }
 
-        nft.safeTransferFrom(address(this), buyer, tokenId);
+        NFT.safeTransferFrom(address(this), buyer, tokenId);
     }
 
     function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {

@@ -25,6 +25,7 @@ anvil
 2. 部署合约：
 
 ```bash
+cd foundry
 forge script script/DeployTokenBank.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
 ```
 

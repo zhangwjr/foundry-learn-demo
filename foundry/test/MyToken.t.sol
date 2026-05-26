@@ -31,7 +31,7 @@ contract MyTokenTest is Test {
         uint256 amount = 100 ether;
 
         vm.prank(owner);
-        token.transfer(alice, amount);
+        assertTrue(token.transfer(alice, amount));
 
         assertEq(token.balanceOf(alice), amount);
         assertEq(token.balanceOf(owner), token.INITIAL_SUPPLY() - amount);
@@ -62,7 +62,7 @@ contract MyTokenTest is Test {
         amount = bound(amount, 0, token.INITIAL_SUPPLY());
 
         vm.prank(owner);
-        token.transfer(alice, amount);
+        assertTrue(token.transfer(alice, amount));
 
         assertEq(token.balanceOf(alice), amount);
         assertEq(token.balanceOf(owner), token.INITIAL_SUPPLY() - amount);

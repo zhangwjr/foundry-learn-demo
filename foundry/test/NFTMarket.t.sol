@@ -29,17 +29,17 @@ contract NFTMarketTest is Test {
         vm.stopPrank();
 
         vm.prank(owner);
-        token.transfer(seller, 1_000 ether);
+        assertTrue(token.transfer(seller, 1_000 ether));
         vm.prank(owner);
-        token.transfer(buyer, 1_000 ether);
+        assertTrue(token.transfer(buyer, 1_000 ether));
 
         vm.prank(owner);
         nft.mint(seller, TOKEN_URI);
     }
 
     function test_Constructor() public view {
-        assertEq(address(market.paymentToken()), address(token));
-        assertEq(address(market.nft()), address(nft));
+        assertEq(address(market.PAYMENT_TOKEN()), address(token));
+        assertEq(address(market.NFT()), address(nft));
     }
 
     function test_List_TransfersNftToMarket() public {
@@ -76,7 +76,7 @@ contract NFTMarketTest is Test {
         emit NFTMarket.Sold(seller, buyer, 0, LIST_PRICE);
 
         vm.prank(buyer);
-        market.buyNFT(0);
+        market.buyNft(0);
 
         assertEq(token.balanceOf(seller), sellerBalanceBefore + LIST_PRICE);
         assertEq(token.balanceOf(buyer), buyerBalanceBefore - LIST_PRICE);
@@ -129,11 +129,11 @@ contract NFTMarketTest is Test {
 
         _approveToken(buyer, LIST_PRICE);
         vm.prank(buyer);
-        market.buyNFT(0);
+        market.buyNft(0);
 
         _approveToken(buyer, 200 ether);
         vm.prank(buyer);
-        market.buyNFT(1);
+        market.buyNft(1);
 
         assertEq(nft.ownerOf(0), buyer);
         assertEq(nft.ownerOf(1), buyer);
@@ -171,7 +171,7 @@ contract NFTMarketTest is Test {
     function test_RevertWhen_BuyNotListed() public {
         vm.prank(buyer);
         vm.expectRevert("Not listed");
-        market.buyNFT(0);
+        market.buyNft(0);
     }
 
     function test_RevertWhen_BuyWithoutTokenApproval() public {
@@ -179,7 +179,7 @@ contract NFTMarketTest is Test {
 
         vm.prank(buyer);
         vm.expectRevert();
-        market.buyNFT(0);
+        market.buyNft(0);
     }
 
     function test_RevertWhen_BuyWithInsufficientBalance() public {
@@ -192,7 +192,7 @@ contract NFTMarketTest is Test {
 
         vm.prank(poorBuyer);
         vm.expectRevert();
-        market.buyNFT(0);
+        market.buyNft(0);
     }
 
     function test_RevertWhen_ConstructorWithZeroAddresses() public {

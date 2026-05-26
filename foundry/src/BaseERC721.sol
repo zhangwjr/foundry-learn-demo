@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 contract BaseERC721 {
     using Strings for uint256;
@@ -17,7 +16,7 @@ contract BaseERC721 {
     string private _symbol;
 
     // Token baseURI
-    string private _baseURI;
+    string private _baseUri;
 
     // Mapping from token ID to owner address
     mapping(uint256 => address) private _owners;
@@ -64,11 +63,11 @@ contract BaseERC721 {
     constructor(
         string memory name_,
         string memory symbol_,
-        string memory baseURI_
+        string memory baseUri_
     ) {
         _name = name_;
         _symbol = symbol_;
-        _baseURI = baseURI_;
+        _baseUri = baseUri_;
     }
 
     /**
@@ -105,7 +104,7 @@ contract BaseERC721 {
         );
 
         // should return baseURI
-        return _baseURI;
+        return _baseUri;
     }
 
     /**
@@ -260,7 +259,7 @@ contract BaseERC721 {
     ) internal {
         _transfer(from, to, tokenId);
         require(
-            _checkOnERC721Received(from, to, tokenId, _data),
+            _checkOnErc721Received(from, to, tokenId, _data),
             "ERC721: transfer to non ERC721Receiver implementer"
         );
     }
@@ -350,7 +349,7 @@ contract BaseERC721 {
      * @param _data bytes optional data to send along with the call
      * @return bool whether the call correctly returned the expected magic value
      */
-    function _checkOnERC721Received(
+    function _checkOnErc721Received(
         address from,
         address to,
         uint256 tokenId,

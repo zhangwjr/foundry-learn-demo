@@ -1,66 +1,30 @@
+# foundry-learn-demo
+
+Monorepo：智能合约（Foundry）+ 前端（Next.js）。
+
+## 目录结构
+
+```
+foundry/     # Foundry 合约、脚本、测试、部署记录
+frontend/    # Next.js 前端
+```
+
 ## Foundry
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+合约开发与部署见 [foundry/README.md](./foundry/README.md)。
 
-Foundry consists of:
-
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```bash
+cd foundry
+forge build
+forge test
 ```
 
-### Test
+## Frontend
 
-```shell
-$ forge test
-```
+前端开发与本地联调见 [frontend/README.md](./frontend/README.md)。
 
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+```bash
+cd frontend
+npm install
+npm run dev
 ```

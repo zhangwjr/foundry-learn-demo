@@ -34,39 +34,70 @@ export function TokenBankApp() {
       return;
     }
 
-    const [symbol, decimals, balance, deposit] = await Promise.all([
-      publicClient.readContract({
-        address: tokenAddress,
-        abi: erc20Abi,
-        functionName: "symbol",
-      }),
-      publicClient.readContract({
-        address: tokenAddress,
-        abi: erc20Abi,
-        functionName: "decimals",
-      }),
-      publicClient.readContract({
-        address: tokenAddress,
-        abi: erc20Abi,
-        functionName: "balanceOf",
-        args: [address],
-      }),
-      publicClient.readContract({
-        address: tokenBankAddress,
-        abi: tokenBankAbi,
-        functionName: "deposits",
-        args: [address],
-      }),
-    ]);
+    try {
+      const [tokenCode, bankCode] = await Promise.all([
+        publicClient.getBytecode({ address: tokenAddress }),
+        publicClient.getBytecode({ address: tokenBankAddress }),
+      ]);
 
-    setTokenInfo({ symbol, decimals: Number(decimals) });
-    setTokenBalance(balance);
-    setBankDeposit(deposit);
-    setWithdrawAmount(formatTokenAmount(deposit, Number(decimals)));
+      if (!tokenCode || !bankCode) {
+        setTokenInfo(null);
+        setTokenBalance(0n);
+        setBankDeposit(0n);
+        setWithdrawAmount("");
+        setStatusMessage(
+          "链上未找到合约，请确认 Anvil 已启动并在 foundry 目录重新部署，然后更新 frontend/.env.local 中的地址。",
+        );
+        return;
+      }
+
+      const [symbol, decimals, balance, deposit] = await Promise.all([
+        publicClient.readContract({
+          address: tokenAddress,
+          abi: erc20Abi,
+          functionName: "symbol",
+        }),
+        publicClient.readContract({
+          address: tokenAddress,
+          abi: erc20Abi,
+          functionName: "decimals",
+        }),
+        publicClient.readContract({
+          address: tokenAddress,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [address],
+        }),
+        publicClient.readContract({
+          address: tokenBankAddress,
+          abi: tokenBankAbi,
+          functionName: "deposits",
+          args: [address],
+        }),
+      ]);
+
+      setTokenInfo({ symbol, decimals: Number(decimals) });
+      setTokenBalance(balance);
+      setBankDeposit(deposit);
+      setWithdrawAmount(formatTokenAmount(deposit, Number(decimals)));
+      setStatusMessage(undefined);
+    } catch (error) {
+      setTokenInfo(null);
+      setTokenBalance(0n);
+      setBankDeposit(0n);
+      setWithdrawAmount("");
+      setStatusMessage(
+        error instanceof Error
+          ? `读取合约失败：${error.message}`
+          : "读取合约失败，请检查 RPC 与合约地址配置",
+      );
+    }
   }, [address, configured, publicClient]);
 
   useEffect(() => {
-    void refreshBalances();
+    void refreshBalances().catch(() => {
+      // refreshBalances handles and surfaces errors via statusMessage
+    });
   }, [refreshBalances]);
 
   const handleDeposit = async () => {

@@ -14,8 +14,12 @@ contract Bank {
     event Withdrawn(address indexed admin, uint256 amount, address indexed to);
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, "Only admin can call");
+        _onlyAdmin();
         _;
+    }
+
+    function _onlyAdmin() internal view {
+        require(msg.sender == admin, "Only admin can call");
     }
 
     constructor() {

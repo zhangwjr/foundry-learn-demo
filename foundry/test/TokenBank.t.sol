@@ -35,7 +35,7 @@ contract TokenBankTest is Test {
     function test_Deposit_UpdatesUserDepositAndBankBalance() public {
         uint256 amount = 1_000 * USDT_UNIT;
 
-        _approveUSDT(user, amount);
+        _approveUsdt(user, amount);
 
         uint256 userBalanceBefore = usdt.balanceOf(user);
         uint256 bankBalanceBefore = usdt.balanceOf(address(bank));
@@ -52,12 +52,12 @@ contract TokenBankTest is Test {
         uint256 first = 500 * USDT_UNIT;
         uint256 second = 300 * USDT_UNIT;
 
-        _approveUSDT(user, first);
+        _approveUsdt(user, first);
         vm.prank(user);
         bank.deposit();
         assertEq(bank.deposits(user), first);
 
-        _approveUSDT(user, second);
+        _approveUsdt(user, second);
         vm.prank(user);
         bank.deposit();
 
@@ -68,7 +68,7 @@ contract TokenBankTest is Test {
     function test_Withdraw_ReturnsUsdtToUser() public {
         uint256 amount = 800 * USDT_UNIT;
 
-        _approveUSDT(user, amount);
+        _approveUsdt(user, amount);
         vm.prank(user);
         bank.deposit();
 
@@ -86,11 +86,11 @@ contract TokenBankTest is Test {
         uint256 userAmount = 600 * USDT_UNIT;
         uint256 otherAmount = 400 * USDT_UNIT;
 
-        _approveUSDT(user, userAmount);
+        _approveUsdt(user, userAmount);
         vm.prank(user);
         bank.deposit();
 
-        _approveUSDT(other, otherAmount);
+        _approveUsdt(other, otherAmount);
         vm.prank(other);
         bank.deposit();
 
@@ -118,7 +118,7 @@ contract TokenBankTest is Test {
         bank.withdraw();
     }
 
-    function _approveUSDT(address owner, uint256 amount) internal {
+    function _approveUsdt(address owner, uint256 amount) internal {
         vm.startPrank(owner);
         // Mainnet USDT requires allowance reset before updating a non-zero value.
         if (usdt.allowance(owner, address(bank)) > 0) {

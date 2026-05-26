@@ -7,7 +7,7 @@
 | 事件 | 触发函数 | 说明 |
 |------|----------|------|
 | `Listed` | `list` | NFT 上架 |
-| `Sold` | `buyNFT` / `onTransferReceived` | NFT 成交（普通购买或 transferAndCall） |
+| `Sold` | `buyNft` / `onTransferReceived` | NFT 成交（普通购买或 transferAndCall） |
 
 ## 使用步骤
 
@@ -20,13 +20,14 @@ anvil
 2. 部署 NFTMarket：
 
 ```bash
+cd foundry
 forge script script/DeployNFTMarket.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
 ```
 
 3. 配置监听环境变量：
 
 ```bash
-cd listener
+cd foundry/listener
 cp .env.example .env
 # 编辑 .env，填入 NFTMarket 合约地址
 ```
