@@ -11,9 +11,11 @@ contract NFTMarketTest is Test {
     MartinNFT public nft;
     NFTMarket public market;
 
-    address public owner = makeAddr("owner");
+    uint256 internal constant OWNER_PRIVATE_KEY = 0xA11CE;
+    address public owner = vm.addr(OWNER_PRIVATE_KEY);
     address public seller = makeAddr("seller");
     address public buyer = makeAddr("buyer");
+    address public whitelistedBuyer = makeAddr("whitelistedBuyer");
     address public other = makeAddr("other");
 
     string internal constant TOKEN_URI =
@@ -201,6 +203,115 @@ contract NFTMarketTest is Test {
 
         vm.expectRevert("Invalid NFT address");
         new NFTMarket(address(token), address(0));
+    }
+
+    function test_PermitWithBuyer_WhitelistsBuyer() public {
+        uint256 deadline = block.timestamp + 1 days;
+        (uint8 v, bytes32 r, bytes32 s) = _signBuyerPermit(whitelistedBuyer, deadline);
+
+        vm.expectEmit(true, false, false, false);
+        emit NFTMarket.BuyerWhitelisted(whitelistedBuyer);
+
+        market.permitWithBuyer(whitelistedBuyer, deadline, v, r, s);
+
+        assertTrue(market.whitelistedBuyers(whitelistedBuyer));
+        assertEq(market.nonces(whitelistedBuyer), 1);
+    }
+
+    function test_PermitBuy_WithSignatureBuysNft() public {
+        _listNft(seller, 0, LIST_PRICE);
+
+        uint256 deadline = block.timestamp + 1 days;
+        (uint8 v, bytes32 r, bytes32 s) = _signBuyerPermit(whitelistedBuyer, deadline);
+
+        vm.prank(owner);
+        assertTrue(token.transfer(whitelistedBuyer, 1_000 ether));
+        _approveToken(whitelistedBuyer, LIST_PRICE);
+
+        vm.expectEmit(true, true, true, true);
+        emit NFTMarket.Sold(seller, whitelistedBuyer, 0, LIST_PRICE);
+
+        vm.prank(whitelistedBuyer);
+        market.permitBuy(0, deadline, v, r, s);
+
+        assertTrue(market.whitelistedBuyers(whitelistedBuyer));
+        assertEq(nft.ownerOf(0), whitelistedBuyer);
+    }
+
+    function test_PermitBuy_AlreadyWhitelistedSkipsSignature() public {
+        _whitelistBuyer(whitelistedBuyer);
+        _listNft(seller, 0, LIST_PRICE);
+
+        vm.prank(owner);
+        assertTrue(token.transfer(whitelistedBuyer, 1_000 ether));
+        _approveToken(whitelistedBuyer, LIST_PRICE);
+
+        vm.prank(whitelistedBuyer);
+        market.permitBuy(0, 0, 0, bytes32(0), bytes32(0));
+
+        assertEq(nft.ownerOf(0), whitelistedBuyer);
+    }
+
+    function test_RevertWhen_PermitWithBuyer_InvalidSigner() public {
+        uint256 deadline = block.timestamp + 1 days;
+        bytes32 digest = market.hashBuyerPermit(whitelistedBuyer, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xBEEF, digest);
+
+        vm.expectRevert(abi.encodeWithSelector(NFTMarket.InvalidBuyerPermitSigner.selector, vm.addr(0xBEEF)));
+        market.permitWithBuyer(whitelistedBuyer, deadline, v, r, s);
+    }
+
+    function test_RevertWhen_PermitWithBuyer_ExpiredSignature() public {
+        uint256 deadline = block.timestamp + 1 days;
+        (uint8 v, bytes32 r, bytes32 s) = _signBuyerPermit(whitelistedBuyer, deadline);
+
+        vm.warp(deadline + 1);
+
+        vm.expectRevert(abi.encodeWithSelector(NFTMarket.BuyerPermitExpired.selector, deadline));
+        market.permitWithBuyer(whitelistedBuyer, deadline, v, r, s);
+    }
+
+    function test_RevertWhen_PermitBuy_NotWhitelistedWithoutValidSignature() public {
+        _listNft(seller, 0, LIST_PRICE);
+
+        vm.prank(owner);
+        assertTrue(token.transfer(buyer, 1_000 ether));
+        _approveToken(buyer, LIST_PRICE);
+
+        uint256 deadline = block.timestamp + 1 days;
+        bytes32 digest = market.hashBuyerPermit(buyer, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xBEEF, digest);
+
+        vm.prank(buyer);
+        vm.expectRevert(abi.encodeWithSelector(NFTMarket.InvalidBuyerPermitSigner.selector, vm.addr(0xBEEF)));
+        market.permitBuy(0, deadline, v, r, s);
+    }
+
+    function test_RevertWhen_PermitBuy_WithoutWhitelistSignature() public {
+        _listNft(seller, 0, LIST_PRICE);
+
+        vm.prank(owner);
+        assertTrue(token.transfer(buyer, 1_000 ether));
+        _approveToken(buyer, LIST_PRICE);
+
+        vm.prank(buyer);
+        vm.expectRevert(abi.encodeWithSelector(NFTMarket.BuyerPermitExpired.selector, uint256(0)));
+        market.permitBuy(0, 0, 0, bytes32(0), bytes32(0));
+    }
+
+    function _whitelistBuyer(address whiteList) internal {
+        uint256 deadline = block.timestamp + 1 days;
+        (uint8 v, bytes32 r, bytes32 s) = _signBuyerPermit(whiteList, deadline);
+        market.permitWithBuyer(whiteList, deadline, v, r, s);
+    }
+
+    function _signBuyerPermit(address whiteList, uint256 deadline)
+        internal
+        view
+        returns (uint8 v, bytes32 r, bytes32 s)
+    {
+        bytes32 digest = market.hashBuyerPermit(whiteList, deadline);
+        (v, r, s) = vm.sign(OWNER_PRIVATE_KEY, digest);
     }
 
     function _listNft(address from, uint256 tokenId, uint256 price) internal {
