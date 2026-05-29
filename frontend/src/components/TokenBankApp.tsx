@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { formatUnits, parseUnits } from "viem";
-import { erc20Abi, tokenBankAbi } from "@/lib/abi";
+import { formatUnits, parseSignature, parseUnits } from "viem";
+import { erc20PermitAbi, tokenBankAbi } from "@/lib/abi";
 import { isConfigured, tokenAddress, tokenBankAddress, chain } from "@/lib/config";
 import {
   useConnection,
@@ -28,7 +28,9 @@ export function TokenBankApp() {
   const [tokenBalance, setTokenBalance] = useState<bigint>(0n);
   const [bankDeposit, setBankDeposit] = useState<bigint>(0n);
   const [depositAmount, setDepositAmount] = useState("");
+  const [permitDepositAmount, setPermitDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [supportsPermit, setSupportsPermit] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -49,6 +51,7 @@ export function TokenBankApp() {
         setTokenInfo(null);
         setTokenBalance(0n);
         setBankDeposit(0n);
+        setSupportsPermit(false);
         setWithdrawAmount("");
         setStatusMessage(
           "链上未找到合约，请确认 Anvil 已启动并在 foundry 目录重新部署，然后更新 frontend/.env.local 中的地址。",
@@ -56,20 +59,20 @@ export function TokenBankApp() {
         return;
       }
 
-      const [symbol, decimals, balance, deposit] = await Promise.all([
+      const [symbol, decimals, balance, deposit, permitSupported] = await Promise.all([
         publicClient.readContract({
           address: tokenAddress,
-          abi: erc20Abi,
+          abi: erc20PermitAbi,
           functionName: "symbol",
         }),
         publicClient.readContract({
           address: tokenAddress,
-          abi: erc20Abi,
+          abi: erc20PermitAbi,
           functionName: "decimals",
         }),
         publicClient.readContract({
           address: tokenAddress,
-          abi: erc20Abi,
+          abi: erc20PermitAbi,
           functionName: "balanceOf",
           args: [address],
         }),
@@ -79,17 +82,28 @@ export function TokenBankApp() {
           functionName: "deposits",
           args: [address],
         }),
+        publicClient
+          .readContract({
+            address: tokenAddress,
+            abi: erc20PermitAbi,
+            functionName: "nonces",
+            args: [address],
+          })
+          .then(() => true)
+          .catch(() => false),
       ]);
 
       setTokenInfo({ symbol, decimals: Number(decimals) });
       setTokenBalance(balance);
       setBankDeposit(deposit);
+      setSupportsPermit(permitSupported);
       setWithdrawAmount(formatTokenAmount(deposit, Number(decimals)));
       setStatusMessage(undefined);
     } catch (error) {
       setTokenInfo(null);
       setTokenBalance(0n);
       setBankDeposit(0n);
+      setSupportsPermit(false);
       setWithdrawAmount("");
       setStatusMessage(
         error instanceof Error
@@ -145,7 +159,7 @@ export function TokenBankApp() {
         account: address,
         chain,
         address: tokenAddress,
-        abi: erc20Abi,
+        abi: erc20PermitAbi,
         functionName: "approve",
         args: [tokenBankAddress, parsedAmount],
       });
@@ -168,6 +182,117 @@ export function TokenBankApp() {
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "存款失败，请重试",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePermitDeposit = async () => {
+    if (
+      !walletClient ||
+      !address ||
+      !tokenAddress ||
+      !tokenBankAddress ||
+      !publicClient
+    ) {
+      setStatusMessage("钱包或合约尚未就绪，请稍后重试");
+      return;
+    }
+
+    if (!tokenInfo) {
+      setStatusMessage("正在加载 Token 信息，请稍后重试");
+      return;
+    }
+
+    if (!supportsPermit) {
+      setStatusMessage(
+        "当前 Token 不支持 EIP-2612 签名授权，请部署 MyPermitToken 并更新 NEXT_PUBLIC_TOKEN_ADDRESS。",
+      );
+      return;
+    }
+
+    const amount = permitDepositAmount.trim();
+    if (!amount || !/^\d+(\.\d+)?$/.test(amount) || Number(amount) <= 0) {
+      setStatusMessage("请输入有效的存款金额，例如 100");
+      return;
+    }
+
+    try {
+      const parsedAmount = parseUnits(amount, tokenInfo.decimals);
+
+      if (parsedAmount > tokenBalance) {
+        setStatusMessage(
+          `余额不足：钱包里有 ${formatTokenAmount(tokenBalance, tokenInfo.decimals)} ${tokenInfo.symbol}，无法存入 ${amount}`,
+        );
+        return;
+      }
+
+      setIsLoading(true);
+      setStatusMessage(undefined);
+
+      const [tokenName, nonce] = await Promise.all([
+        publicClient.readContract({
+          address: tokenAddress,
+          abi: erc20PermitAbi,
+          functionName: "name",
+        }),
+        publicClient.readContract({
+          address: tokenAddress,
+          abi: erc20PermitAbi,
+          functionName: "nonces",
+          args: [address],
+        }),
+      ]);
+
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+
+      const signature = await walletClient.signTypedData({
+        account: address,
+        domain: {
+          name: tokenName,
+          version: "1",
+          chainId: chain.id,
+          verifyingContract: tokenAddress,
+        },
+        types: {
+          Permit: [
+            { name: "owner", type: "address" },
+            { name: "spender", type: "address" },
+            { name: "value", type: "uint256" },
+            { name: "nonce", type: "uint256" },
+            { name: "deadline", type: "uint256" },
+          ],
+        },
+        primaryType: "Permit",
+        message: {
+          owner: address,
+          spender: tokenBankAddress,
+          value: parsedAmount,
+          nonce,
+          deadline,
+        },
+      });
+
+      const { v, r, s } = parseSignature(signature);
+
+      const depositHash = await walletClient.writeContract({
+        account: address,
+        chain,
+        address: tokenBankAddress,
+        abi: tokenBankAbi,
+        functionName: "permitDeposit",
+        args: [address, parsedAmount, deadline, Number(v), r, s],
+      });
+
+      await publicClient.waitForTransactionReceipt({ hash: depositHash });
+
+      setPermitDepositAmount("");
+      setStatusMessage(`签名存款成功：${amount} ${tokenInfo.symbol}`);
+      await refreshBalances();
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "签名存款失败，请重试",
       );
     } finally {
       setIsLoading(false);
@@ -285,6 +410,45 @@ export function TokenBankApp() {
             className="shrink-0 whitespace-nowrap rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isLoading ? "处理中..." : "存款"}
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-zinc-900">通过签名存款</h2>
+        <p className="mt-2 text-sm text-zinc-600">
+          使用 EIP-2612 离线签名授权，只需 1 笔链上交易即可完成存款（无需先发送 approve
+          交易）。请输入 Token 数量，然后点击按钮在钱包中签名并提交。
+        </p>
+        {!supportsPermit && isConnected ? (
+          <p className="mt-3 text-sm text-amber-700">
+            当前 Token 不支持 permit。请部署{" "}
+            <code className="rounded bg-amber-100 px-1">MyPermitToken</code>{" "}
+            并更新环境变量中的 Token 地址。
+          </p>
+        ) : null}
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="例如 100"
+            value={permitDepositAmount}
+            onChange={(event) => setPermitDepositAmount(event.target.value)}
+            disabled={!isConnected || isLoading || !supportsPermit}
+            className="w-full rounded-lg border border-zinc-200 px-4 py-2.5 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:bg-zinc-50"
+          />
+          <button
+            type="button"
+            onClick={() => void handlePermitDeposit()}
+            disabled={
+              !isConnected ||
+              isLoading ||
+              !supportsPermit ||
+              !permitDepositAmount.trim()
+            }
+            className="shrink-0 whitespace-nowrap rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isLoading ? "处理中..." : "签名并存款"}
           </button>
         </div>
       </section>

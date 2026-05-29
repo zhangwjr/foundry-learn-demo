@@ -40,6 +40,24 @@ export const erc20Abi = [
     inputs: [],
     outputs: [{ type: "string" }],
   },
+  {
+    type: "function",
+    name: "name",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "string" }],
+  },
+] as const;
+
+export const erc20PermitAbi = [
+  ...erc20Abi,
+  {
+    type: "function",
+    name: "nonces",
+    stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }],
+    outputs: [{ type: "uint256" }],
+  },
 ] as const;
 
 export const tokenBankAbi = [
@@ -55,6 +73,20 @@ export const tokenBankAbi = [
     name: "deposit",
     stateMutability: "nonpayable",
     inputs: [],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "permitDeposit",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "amount", type: "uint256" },
+      { name: "deadline", type: "uint256" },
+      { name: "v", type: "uint8" },
+      { name: "r", type: "bytes32" },
+      { name: "s", type: "bytes32" },
+    ],
     outputs: [],
   },
   {
