@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {IERC1363Receiver} from "@openzeppelin/contracts/interfaces/IERC1363Receiver.sol";
@@ -11,16 +10,15 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
+/// @notice Gas-optimized NFT marketplace with ERC-20 payment and permit whitelist.
 contract NFTMarket is IERC721Receiver, IERC1363Receiver, EIP712, Ownable, Nonces {
-    using SafeERC20 for IERC20;
-
     IERC20 public immutable PAYMENT_TOKEN;
     IERC721 public immutable NFT;
 
+    /// @dev Packed into one storage slot: seller (160 bits) + price (96 bits).
     struct Listing {
         address seller;
-        uint256 price;
-        bool active;
+        uint96 price;
     }
 
     mapping(uint256 => Listing) public listings;
@@ -33,6 +31,15 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver, EIP712, Ownable, Nonces
     event Sold(address indexed seller, address indexed buyer, uint256 indexed tokenId, uint256 price);
     event BuyerWhitelisted(address indexed buyer);
 
+    error ZeroAddress();
+    error ZeroPrice();
+    error PriceTooHigh();
+    error NotOwner();
+    error AlreadyListed();
+    error NotListed();
+    error IncorrectPrice();
+    error InvalidPaymentCaller();
+    error TransferFailed();
     error BuyerPermitExpired(uint256 deadline);
     error InvalidBuyerPermitSigner(address signer);
     error NotWhitelisted(address buyer);
@@ -41,20 +48,25 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver, EIP712, Ownable, Nonces
         EIP712("NFTMarket", "1")
         Ownable(msg.sender)
     {
-        require(paymentTokenAddress != address(0), "Invalid token address");
-        require(nftAddress != address(0), "Invalid NFT address");
+        if (paymentTokenAddress == address(0) || nftAddress == address(0)) {
+            revert ZeroAddress();
+        }
         PAYMENT_TOKEN = IERC20(paymentTokenAddress);
         NFT = IERC721(nftAddress);
     }
 
     function list(uint256 tokenId, uint256 price) external {
-        require(price > 0, "Price must be greater than 0");
-        require(NFT.ownerOf(tokenId) == msg.sender, "Not the owner");
-        require(!listings[tokenId].active, "Already listed");
+        if (price == 0) revert ZeroPrice();
+        if (price > type(uint96).max) revert PriceTooHigh();
+        if (NFT.ownerOf(tokenId) != msg.sender) revert NotOwner();
 
-        NFT.safeTransferFrom(msg.sender, address(this), tokenId);
+        Listing storage listing = listings[tokenId];
+        if (listing.seller != address(0)) revert AlreadyListed();
 
-        listings[tokenId] = Listing({seller: msg.sender, price: price, active: true});
+        NFT.transferFrom(msg.sender, address(this), tokenId);
+
+        listing.seller = msg.sender;
+        listing.price = uint96(price);
 
         emit Listed(msg.sender, tokenId, price);
     }
@@ -91,10 +103,6 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver, EIP712, Ownable, Nonces
             permitWithBuyer(buyer, deadline, v, r, s);
         }
 
-        if (!whitelistedBuyers[buyer]) {
-            revert NotWhitelisted(buyer);
-        }
-
         (address seller, uint256 price) = _purchase(tokenId, buyer, 0, false);
         emit Sold(seller, buyer, tokenId, price);
     }
@@ -111,7 +119,7 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver, EIP712, Ownable, Nonces
         external
         returns (bytes4)
     {
-        require(msg.sender == address(PAYMENT_TOKEN), "Invalid caller");
+        if (msg.sender != address(PAYMENT_TOKEN)) revert InvalidPaymentCaller();
 
         uint256 tokenId = abi.decode(data, (uint256));
         (address seller, uint256 price) = _purchase(tokenId, from, value, true);
@@ -124,25 +132,29 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver, EIP712, Ownable, Nonces
         internal
         returns (address seller, uint256 price)
     {
-        Listing memory listing = listings[tokenId];
-        require(listing.active, "Not listed");
-
+        Listing storage listing = listings[tokenId];
         seller = listing.seller;
-        price = listing.price;
+        if (seller == address(0)) revert NotListed();
 
-        if (tokensAlreadyReceived) {
-            require(paymentAmount == price, "Incorrect price");
-        }
+        price = listing.price;
+        if (tokensAlreadyReceived && paymentAmount != price) revert IncorrectPrice();
 
         delete listings[tokenId];
 
         if (tokensAlreadyReceived) {
-            PAYMENT_TOKEN.safeTransfer(seller, price);
+            _transferPayment(address(this), seller, price);
         } else {
-            PAYMENT_TOKEN.safeTransferFrom(buyer, seller, price);
+            _transferPayment(buyer, seller, price);
         }
 
         NFT.safeTransferFrom(address(this), buyer, tokenId);
+    }
+
+    function _transferPayment(address from, address to, uint256 amount) private {
+        bool success = from == address(this)
+            ? PAYMENT_TOKEN.transfer(to, amount)
+            : PAYMENT_TOKEN.transferFrom(from, to, amount);
+        if (!success) revert TransferFailed();
     }
 
     function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {

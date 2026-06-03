@@ -50,10 +50,9 @@ contract NFTMarketTest is Test {
         vm.prank(seller);
         market.list(0, LIST_PRICE);
 
-        (address listedSeller, uint256 price, bool active) = market.listings(0);
+        (address listedSeller, uint256 price) = market.listings(0);
         assertEq(listedSeller, seller);
         assertEq(price, LIST_PRICE);
-        assertTrue(active);
         assertEq(nft.ownerOf(0), address(market));
     }
 
@@ -84,10 +83,9 @@ contract NFTMarketTest is Test {
         assertEq(token.balanceOf(buyer), buyerBalanceBefore - LIST_PRICE);
         assertEq(nft.ownerOf(0), buyer);
 
-        (address listedSeller, uint256 price, bool active) = market.listings(0);
+        (address listedSeller, uint256 price) = market.listings(0);
         assertEq(listedSeller, address(0));
         assertEq(price, 0);
-        assertFalse(active);
     }
 
     function test_BuyNFTViaTransferAndCall() public {
@@ -112,13 +110,13 @@ contract NFTMarketTest is Test {
         _listNft(seller, 0, LIST_PRICE);
 
         vm.prank(buyer);
-        vm.expectRevert("Incorrect price");
+        vm.expectRevert(NFTMarket.IncorrectPrice.selector);
         token.transferAndCall(address(market), 50 ether, abi.encode(0));
     }
 
     function test_RevertWhen_TransferAndCallNotListed() public {
         vm.prank(buyer);
-        vm.expectRevert("Not listed");
+        vm.expectRevert(NFTMarket.NotListed.selector);
         token.transferAndCall(address(market), LIST_PRICE, abi.encode(0));
     }
 
@@ -146,13 +144,13 @@ contract NFTMarketTest is Test {
         _approveNft(seller, 0);
 
         vm.prank(seller);
-        vm.expectRevert("Price must be greater than 0");
+        vm.expectRevert(NFTMarket.ZeroPrice.selector);
         market.list(0, 0);
     }
 
     function test_RevertWhen_ListNotOwner() public {
         vm.prank(other);
-        vm.expectRevert("Not the owner");
+        vm.expectRevert(NFTMarket.NotOwner.selector);
         market.list(0, LIST_PRICE);
     }
 
@@ -166,13 +164,13 @@ contract NFTMarketTest is Test {
         _listNft(seller, 0, LIST_PRICE);
 
         vm.prank(seller);
-        vm.expectRevert("Not the owner");
+        vm.expectRevert(NFTMarket.NotOwner.selector);
         market.list(0, LIST_PRICE);
     }
 
     function test_RevertWhen_BuyNotListed() public {
         vm.prank(buyer);
-        vm.expectRevert("Not listed");
+        vm.expectRevert(NFTMarket.NotListed.selector);
         market.buyNft(0);
     }
 
@@ -198,10 +196,10 @@ contract NFTMarketTest is Test {
     }
 
     function test_RevertWhen_ConstructorWithZeroAddresses() public {
-        vm.expectRevert("Invalid token address");
+        vm.expectRevert(NFTMarket.ZeroAddress.selector);
         new NFTMarket(address(0), address(nft));
 
-        vm.expectRevert("Invalid NFT address");
+        vm.expectRevert(NFTMarket.ZeroAddress.selector);
         new NFTMarket(address(token), address(0));
     }
 

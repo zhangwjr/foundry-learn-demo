@@ -13,6 +13,8 @@ foundry/docs/*
 !foundry/docs/cast-wallet-keystore.md
 !foundry/docs/mint-nft-flow.md
 !foundry/docs/deploy-martin-nft-optimism.md
+!foundry/docs/gas_report_v1.md
+!foundry/docs/gas_report_v2.md
 
 # Dotenv file
 foundry/.env
