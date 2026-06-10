@@ -6,7 +6,7 @@ import {ERC1363} from "@openzeppelin/contracts/token/ERC20/extensions/ERC1363.so
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MyToken is ERC1363, Ownable {
-    uint256 public constant INITIAL_SUPPLY = 1_000_000 * 10 ** 18;
+    uint256 public constant INITIAL_SUPPLY = 100_000_000 * 10 ** 18;
 
     constructor(address initialOwner) ERC20("MyToken", "MTK") Ownable(initialOwner) {
         _mint(initialOwner, INITIAL_SUPPLY);
