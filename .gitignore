@@ -15,6 +15,7 @@ foundry/docs/*
 !foundry/docs/deploy-martin-nft-optimism.md
 !foundry/docs/gas_report_v1.md
 !foundry/docs/gas_report_v2.md
+!foundry/docs/bridge-mytoken-l1-to-l2.md
 
 # Dotenv file
 foundry/.env
